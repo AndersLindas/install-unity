@@ -155,6 +155,11 @@ public struct UnityVersion : IComparable, IComparable<UnityVersion>, IEquatable<
         if (match.Success) {
             if (match.Groups[1].Success) {
                 major = int.Parse(match.Groups[1].Value);
+                if (major > 0 && major < 2000) {
+                    // Convert Unity 6+ to actual major version 6000
+                    major *= 1000;
+                }
+
                 if (match.Groups[2].Success) {
                     minor = int.Parse(match.Groups[2].Value);
                     if (match.Groups[3].Success) {
