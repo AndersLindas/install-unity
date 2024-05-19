@@ -333,6 +333,8 @@ public class InstallUnityCLI
     /// </summary>
     public static async Task<int> Main(string[] args)
     {
+        enableColors = Environment.GetEnvironmentVariable("CLICOLORS") != "0";
+
         var cli = new InstallUnityCLI();
         try {
             ArgumentsDefinition.Parse(cli, args);
@@ -414,7 +416,6 @@ public class InstallUnityCLI
 
     public async Task<UnityVersion> Setup(bool avoidCacheUpate = false)
     {
-        enableColors = Environment.GetEnvironmentVariable("CLICOLORS") != "0";
 
         var level = LogLevel.Warning;
         if (verbose >= 3) {
