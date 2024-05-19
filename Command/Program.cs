@@ -455,8 +455,8 @@ public class InstallUnityCLI
                 Environment.Exit(0);
             } else if (options.Contains("save")) {
                 var configPath = installer.DataPath ?? installer.Platform.GetConfigurationDirectory();
-                configPath = System.IO.Path.Combine(configPath, UnityInstaller.CONFIG_FILENAME);
-                if (System.IO.File.Exists(configPath)) {
+                configPath = Path.Combine(configPath, UnityInstaller.CONFIG_FILENAME);
+                if (File.Exists(configPath)) {
                     Console.WriteLine($"Configuration file already exists:\n{configPath}");
                 } else {
                     installer.Configuration.Save(configPath);
@@ -1335,9 +1335,9 @@ public class InstallUnityCLI
         Installation uninstall = null;
         var version = new UnityVersion(matchVersion);
         if (!version.IsValid) {
-            var fullPath = System.IO.Path.GetFullPath(matchVersion);
+            var fullPath = Path.GetFullPath(matchVersion);
             foreach (var install in installs) {
-                var fullInstallPath = System.IO.Path.GetFullPath(install.path);
+                var fullInstallPath = Path.GetFullPath(install.path);
                 if (fullPath == fullInstallPath) {
                     uninstall = install;
                     break;
@@ -1405,20 +1405,20 @@ public class InstallUnityCLI
             version = default;
 
             projectPath = matchVersion;
-            if (!System.IO.Directory.Exists(projectPath)) {
+            if (!Directory.Exists(projectPath)) {
                 throw new Exception($"Project path '{projectPath}' does not exist.");
             }
 
-            var versionPath = System.IO.Path.Combine(projectPath, "ProjectSettings", "ProjectVersion.txt");
-            if (!System.IO.File.Exists(versionPath)) {
+            var versionPath = Path.Combine(projectPath, "ProjectSettings", "ProjectVersion.txt");
+            if (!File.Exists(versionPath)) {
                 throw new Exception($"ProjectVersion.txt not found at expected path: {versionPath}");
             }
 
             // Use full path, Unity doesn't properly recognize short relative paths
             // (as of Unity 2019.3)
-            projectPath = System.IO.Path.GetFullPath(projectPath);
+            projectPath = Path.GetFullPath(projectPath);
 
-            var lines = System.IO.File.ReadAllLines(versionPath);
+            var lines = File.ReadAllLines(versionPath);
             foreach (var line in lines) {
                 if (line.StartsWith("m_EditorVersion:") || line.StartsWith("m_EditorVersionWithRevision:")) {
                     var colonIndex = line.IndexOf(':');
@@ -1498,7 +1498,7 @@ public class InstallUnityCLI
         }
 
         if (projectPath != null) {
-            var projectName = System.IO.Path.GetFileName(projectPath);
+            var projectName = Path.GetFileName(projectPath);
             if (installation == null) {
                 Logger.LogError($"Could not run project '{projectName}', Unity {version} not installed");
 
