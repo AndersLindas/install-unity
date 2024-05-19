@@ -118,6 +118,11 @@ public struct UnityVersion : IComparable, IComparable<UnityVersion>, IEquatable<
     // -------- API --------
 
     /// <summary>
+    /// Undefined Unity version that has all number components set to -1.
+    /// </summary>
+    public static readonly UnityVersion Undefined = new UnityVersion(-1);
+
+    /// <summary>
     /// Create a new Unity version.
     /// </summary>
     public UnityVersion(int major = -1, int minor = -1, int patch = -1, Type type = Type.Undefined, int build = -1, string hash = null)

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using sttz.NiceConsoleLogger;
@@ -71,9 +70,17 @@ public class InstallUnityCLI
     public List<string> options = new List<string>();
 
     /// <summary>
-    /// Version expression, used for most commands.
+    /// The original argument parsed into <see cref="versionArgument"/> or <see cref="uriArgument"/>.
     /// </summary>
-    public string matchVersion;
+    public string versionOrUrl;
+    /// <summary>
+    /// Version argument.
+    /// </summary>
+    public UnityVersion versionArgument = UnityVersion.Undefined;
+    /// <summary>
+    /// Url or path argument.
+    /// </summary>
+    public Uri uriArgument;
 
     // -- List
 
@@ -182,7 +189,7 @@ public class InstallUnityCLI
         if (platform != Platform.None) cmd += " --platform " + platform;
         if (architecture != Architecture.None) cmd += " --arch " + platform;
 
-        if (matchVersion != null) cmd += " " + matchVersion;
+        if (versionOrUrl != null) cmd += " " + versionOrUrl;
 
         if (installed) cmd += " --installed";
 
@@ -237,7 +244,7 @@ public class InstallUnityCLI
                 .Action("list", (t, a) => t.action = a)
                     .Description("Get an overview of available or installed Unity versions")
                 
-                .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0)
+                .Option((InstallUnityCLI t, string v) => t.ProcessVersionArgument(v), 0)
                     .ArgumentName("<version>")
                     .Description("Pattern to match Unity version")
                 .Option((InstallUnityCLI t, bool v) => t.installed = v, "i", "installed")
@@ -250,7 +257,7 @@ public class InstallUnityCLI
                 .Action("details", (t, a) => t.action = a)
                     .Description("Show version information and all its available packages")
 
-                .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0)
+                .Option((InstallUnityCLI t, string v) => t.ProcessVersionArgument(v, allowUrl: true), 0)
                     .ArgumentName("<version>")
                     .Description("Pattern to match Unity version or release notes / unity hub url")
                 .Option((InstallUnityCLI t, Platform v) => t.platform = v, "platform")
@@ -262,7 +269,7 @@ public class InstallUnityCLI
                     .DefaultAction(t => t.usingDefaultAction = true)
                     .Description("Download and install a version of Unity")
                 
-                .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0)
+                .Option((InstallUnityCLI t, string v) => t.ProcessVersionArgument(v, allowUrl: true), 0)
                     .ArgumentName("<version>")
                     .Description("Pattern to match Unity version or release notes / unity hub url")
                 .Option((InstallUnityCLI t, IList<string> v) => t.packages.AddRange(v), "p", "packages").Repeatable()
@@ -286,14 +293,14 @@ public class InstallUnityCLI
                 .Action("uninstall", (t, a) => t.action = a)
                     .Description("Remove a previously installed version of Unity")
                 
-                .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0)
+                .Option((InstallUnityCLI t, string v) => t.ProcessVersionArgument(v, allowPath: true), 0)
                     .ArgumentName("<version-or-path>")
                     .Description("Pattern to match Unity version or path to installation root")
                     
                 .Action("run", (t, a) => t.action = a)
                     .Description("Execute a version of Unity or a Unity project, matching it to its Unity version")
                 
-                .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0).Required()
+                .Option((InstallUnityCLI t, string v) => t.ProcessVersionArgument(v, allowPath: true), 0).Required()
                     .ArgumentName("<version-or-path>")
                     .Description("Pattern to match Unity version or path to a Unity project")
                 .Option((InstallUnityCLI t, string v) => t.unityArguments.Add(v), 1).Repeatable()
@@ -311,7 +318,7 @@ public class InstallUnityCLI
                 .Action("create", (t, a) => t.action = a)
                     .Description("Create a new empty Unity project")
                 
-                .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0).Required()
+                .Option((InstallUnityCLI t, string v) => t.ProcessVersionArgument(v), 0).Required()
                     .ArgumentName("<version>")
                     .Description("Pattern to match the Unity version to create the project with")
                 .Option((InstallUnityCLI t, string v) => t.projectPath = v, 1).Required()
@@ -355,7 +362,7 @@ public class InstallUnityCLI
                     await cli.Details();
                     break;
                 case "install":
-                    if (cli.matchVersion == null) {
+                    if (cli.versionOrUrl == null) {
                         await cli.ListUpdates();
                     } else {
                         await cli.Install();
@@ -414,9 +421,46 @@ public class InstallUnityCLI
     ILogger Logger;
     HashSet<UnityVersion> newVersions;
 
+    const string UriSchemeUnityhub = "unityhub";
+
+    public void ProcessVersionArgument(string argument, bool allowPath = false, bool allowUrl = false)
+    {
+        versionOrUrl = argument;
+
+        versionArgument = new UnityVersion(argument);
+        if (versionArgument.IsValid) {
+            // Valid Unity version
+            return;
+        }
+
+        if ((allowPath || allowUrl) && Uri.TryCreate(argument, UriKind.RelativeOrAbsolute, out uriArgument)) {
+            if (allowPath && (!uriArgument.IsAbsoluteUri || uriArgument.IsFile)) {
+                // Valid file path
+                return;
+            } else if (allowUrl && uriArgument.IsAbsoluteUri && (
+                    uriArgument.Scheme == Uri.UriSchemeHttp || 
+                    uriArgument.Scheme == Uri.UriSchemeHttps ||
+                    uriArgument.Scheme == UriSchemeUnityhub
+            )) {
+                // Valid http/https/unityhub URL
+                return;
+            }
+        }
+
+        // Invalid
+        var type = "version";
+        if (allowPath) type += "/path";
+        if (allowUrl) type += "/url";
+
+        var example = "6000, 6000.1.1, 6000b, c36be92430b9";
+        if (allowPath) example += ", /path/to/unity";
+        if (allowUrl) example += ", https://unity.com/path/to/unity, unityhub://VERSION";
+
+        throw new Exception($"Unrecognized Unity {type} '{argument}' (must be e.g. {example})");
+    }
+
     public async Task<UnityVersion> Setup(bool avoidCacheUpate = false)
     {
-
         var level = LogLevel.Warning;
         if (verbose >= 3) {
             level = LogLevel.Trace;
@@ -449,8 +493,9 @@ public class InstallUnityCLI
         Logger.LogDebug($"Selected platform {platform}-{architecture}");
 
         // Parse version argument (positional argument)
-        var version = new UnityVersion(matchVersion);
+        UnityVersion version = versionArgument;
         if (version.type == UnityVersion.Type.Undefined && version.hash == null) {
+            // Default to Final version if input does not specify it
             version.type = UnityVersion.Type.Final;
         }
 
@@ -528,39 +573,31 @@ public class InstallUnityCLI
         return version;
     }
 
-    static readonly Regex URL_REGEX = new Regex(@"^(https?|unityhub):\/\/", RegexOptions.IgnoreCase);
-
-    async Task<(UnityVersion, VersionMetadata)> SelectAndLoad(UnityVersion version, string versionString, bool installOnly)
+    async Task<(UnityVersion, VersionMetadata)> SelectAndLoad(UnityVersion version, Uri uri, bool installOnly)
     {
         VersionMetadata metadata;
-
-        Match urlMatch = null;
-        if (versionString != null) {
-            urlMatch = URL_REGEX.Match(versionString);
-        }
-
-        if (urlMatch != null && urlMatch.Success) {
-            var scheme = urlMatch.Groups[1].Value;
-            if (scheme.Equals("unityhub", StringComparison.OrdinalIgnoreCase)) {
+        
+        if (uri != null) {
+            if (uri.Scheme == UriSchemeUnityhub) {
                 // Got unityhub url as version
-                metadata = installer.Scraper.UnityHubUrlToVersion(matchVersion);
+                metadata = installer.Scraper.UnityHubUrlToVersion(uri.ToString());
                 if (metadata.baseUrl == null) {
-                    throw new Exception("Could not parse Unity Hub URL: " + matchVersion);
+                    throw new Exception("Could not parse Unity Hub URL: " + uri.ToString());
                 }
 
             } else {
                 // Got http url as version, try to scrape url
                 Logger.LogInformation($"Got url instead of version, trying to find version at url...");
-                metadata = await installer.Scraper.LoadUrl(matchVersion);
+                metadata = await installer.Scraper.LoadUrl(uri.ToString());
 
                 if (!metadata.Version.IsValid) {
-                    throw new Exception("Could not find version at url: " + versionString);
+                    throw new Exception("Could not find version at url: " + uri.ToString());
                 }
             }
 
             version = metadata.Version;
 
-        } else {
+        } else if (version.IsValid) {
             // Locate version in cache or look it up
             metadata = installer.Versions.Find(version);
             if (!metadata.Version.IsValid) {
@@ -583,6 +620,9 @@ public class InstallUnityCLI
                 installer.Versions.Save();
                 Console.WriteLine($"Guessed release notes URL to discover {metadata.Version}");
             }
+
+        } else {
+            throw new Exception($"Neither Unity version or URL specified");
         }
 
         if (!metadata.Version.MatchesVersionOrHash(version)) {
@@ -670,7 +710,7 @@ public class InstallUnityCLI
         Console.WriteLine($"{PROGRAM_NAME} v{GetVersion()}, use --help to show usage");
 
         // Force scanning for prerelease versions
-        matchVersion = "a";
+        versionArgument = new UnityVersion(type: UnityVersion.Type.Alpha);
 
         var version = await Setup();
         var installs = await installer.Platform.FindInstallations();
@@ -765,8 +805,8 @@ public class InstallUnityCLI
         var installs = await installer.Platform.FindInstallations();
 
         if (installed) {
-            // Re-parse given version to get default undefined for type
-            InstalledList(installer, new UnityVersion(matchVersion), installs);
+            // Use original parsed version to get default undefined for type
+            InstalledList(installer, versionArgument, installs);
         } else {
             VersionsTable(installer, version, installs);
         }
@@ -879,7 +919,7 @@ public class InstallUnityCLI
     public async Task Details()
     {
         var version = await Setup();
-        (_, var metadata) = await SelectAndLoad(version, matchVersion, false);
+        (_, var metadata) = await SelectAndLoad(version, uriArgument, false);
         ShowDetails(installer, metadata);
     }
 
@@ -1041,7 +1081,7 @@ public class InstallUnityCLI
         }
 
         VersionMetadata metadata;
-        (version, metadata) = await SelectAndLoad(version, matchVersion, op == UnityInstaller.InstallStep.Install);
+        (version, metadata) = await SelectAndLoad(version, uriArgument, op == UnityInstaller.InstallStep.Install);
         var editor = metadata.GetEditorDownload(platform, architecture);
 
         // Determine packages to install (-p / --packages or defaultPackages option)
@@ -1339,19 +1379,9 @@ public class InstallUnityCLI
         }
 
         Installation uninstall = null;
-        var version = new UnityVersion(matchVersion);
-        if (!version.IsValid) {
-            var fullPath = Path.GetFullPath(matchVersion);
+        if (versionArgument.IsValid) {
             foreach (var install in installs) {
-                var fullInstallPath = Path.GetFullPath(install.path);
-                if (fullPath == fullInstallPath) {
-                    uninstall = install;
-                    break;
-                }
-            }
-        } else {
-            foreach (var install in installs) {
-                if (version.FuzzyMatches(install.version)) {
+                if (versionArgument.FuzzyMatches(install.version)) {
                     if (uninstall != null) {
                         throw new Exception($"Version {version} is ambiguous between\n"
                             + $"{uninstall.version} at '{uninstall.path}' and\n"
@@ -1361,6 +1391,17 @@ public class InstallUnityCLI
                     uninstall = install;
                 }
             }
+        } else if (uriArgument != null) {
+            var fullPath = Path.GetFullPath(uriArgument.ToString());
+            foreach (var install in installs) {
+                var fullInstallPath = Path.GetFullPath(install.path);
+                if (fullPath == fullInstallPath) {
+                    uninstall = install;
+                    break;
+                }
+            }
+        } else {
+            throw new Exception($"Neither Unity verison or path is specified");
         }
 
         if (uninstall == null) {
@@ -1391,26 +1432,11 @@ public class InstallUnityCLI
 
         Installation installation = null;
         string projectPath = null;
-        if (new UnityVersion(matchVersion).IsValid) {
-            // Argument is version pattern
-            foreach (var install in installs.OrderByDescending(i => i.version)) {
-                if (version.FuzzyMatches(install.version)) {
-                    if (installation != null) {
-                        if (!version.IsFullVersion) continue;
-                        throw new Exception($"Version {version} is ambiguous between\n"
-                            + $"{installation.version} at '{installation.path}' and\n"
-                            + $"{install.version} at '{install.path}'\n"
-                            + "(use exact version).");
-                    }
-                    installation = install;
-                }
-            }
-
-        } else {
+        if (uriArgument != null) {
             // Argument is path to project
             version = default;
 
-            projectPath = matchVersion;
+            projectPath = uriArgument.ToString();
             if (!Directory.Exists(projectPath)) {
                 throw new Exception($"Project path '{projectPath}' does not exist.");
             }
@@ -1501,6 +1527,24 @@ public class InstallUnityCLI
             if (allowNewer != AllowNewer.None || upgradeVersion != null) {
                 unityArguments.Add("-skipUpgradeDialogs");
             }
+
+        } else if (version.IsValid) {
+            // Argument is version pattern
+            foreach (var install in installs.OrderByDescending(i => i.version)) {
+                if (version.FuzzyMatches(install.version)) {
+                    if (installation != null) {
+                        if (!version.IsFullVersion) continue;
+                        throw new Exception($"Version {version} is ambiguous between\n"
+                            + $"{installation.version} at '{installation.path}' and\n"
+                            + $"{install.version} at '{install.path}'\n"
+                            + "(use exact version).");
+                    }
+                    installation = install;
+                }
+            }
+
+        } else {
+            throw new Exception($"Neither Unity version or project path specified");
         }
 
         if (projectPath != null) {
@@ -1571,16 +1615,11 @@ public class InstallUnityCLI
         }
 
         // Determine Unity installation to create project with
-        var version = new UnityVersion(matchVersion);
-        if (!version.IsValid) {
-            throw new Exception("Not a valid Unity version pattern: " + matchVersion);
-        }
-
         Installation installation = null;
         foreach (var install in installs.OrderByDescending(i => i.version)) {
-            if (version.FuzzyMatches(install.version)) {
+            if (versionArgument.FuzzyMatches(install.version)) {
                 if (installation != null) {
-                    if (!version.IsFullVersion) continue;
+                    if (!versionArgument.IsFullVersion) continue;
                     throw new Exception($"Version {version} is ambiguous between\n"
                         + $"{installation.version} at '{installation.path}' and\n"
                         + $"{install.version} at '{install.path}'\n"
@@ -1604,7 +1643,7 @@ public class InstallUnityCLI
         }
 
         // Setup project
-        Console.WriteLine($"Creating new Unity {version.ToString(false)} project at path: {fullPath}");
+        Console.WriteLine($"Creating new Unity {versionArgument.ToString(false)} project at path: {fullPath}");
         Directory.CreateDirectory(assetsPath);
         Directory.CreateDirectory(settingsPath);
 
