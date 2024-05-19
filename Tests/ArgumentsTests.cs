@@ -175,8 +175,8 @@ public class ArgumentsTests
     [Fact]
     public void TestInvalidAction()
     {
-        var ex = Assert.Throws<ArgumentsException>(() => Parse("liist"));
-        Assert.Equal("Unexpected argument at position #0: liist", ex.Message);
+        var ex = Assert.Throws<Exception>(() => Parse("liist"));
+        Assert.StartsWith("Unrecognized Unity version/url 'liist'", ex.Message);
     }
 
     [Fact]
@@ -224,8 +224,8 @@ public class ArgumentsTests
     public void TestRepeatablePositionalArgument()
     {
         Assert.Equal(
-            "run 2018 --detach -- -batchmode -nographics -quit",
-            Parse("run", "-d", "2018", "--", "-batchmode", "-nographics", "-quit").ToString()
+            "run 2018 --child -- -batchmode -nographics -quit",
+            Parse("run", "-c", "2018", "--", "-batchmode", "-nographics", "-quit").ToString()
         );
     }
 
@@ -260,7 +260,7 @@ public class ArgumentsTests
         );
 
         var ex = Assert.Throws<ArgumentsException>(() => Parse("run", "/tmp/test", "--allow-newer", "blah"));
-        Assert.Equal("Invalid value for allow-newer: 'blah' (must be 'none', 'patch', 'minor', 'all')", ex.Message);
+        Assert.Equal("Invalid value for allow-newer: 'blah' (must be 'none', 'hash', 'build', 'patch', 'minor', 'all')", ex.Message);
     }
 
     [Fact]
