@@ -384,6 +384,11 @@ public class InstallUnityCLI
 
         } catch (Exception e) {
             Arguments<InstallUnityCLI>.WriteException(e, args, cli.verbose > 0, enableColors);
+
+            if (cli.help) {
+                cli.PrintHelp();
+            }
+
             return 1;
         }
     }
