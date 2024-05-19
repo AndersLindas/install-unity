@@ -84,10 +84,14 @@ public class Arguments<T>
     /// <summary>
     /// Make the current action the default action (used when no action is explicitly set).
     /// </summary>
-    public Arguments<T> DefaultAction()
+    /// <param name="usingDefaultAction">Called if no action is specified and the default is used</param>
+    public Arguments<T> DefaultAction(Action<T> usingDefaultAction = null)
     {
         if (definedAction == null) {
             throw new InvalidOperationException($"No current action set to make default");
+        }
+        if (usingDefaultAction != null) {
+            this.usingDefaultAction = usingDefaultAction;
         }
         defaultAction = definedAction.name;
         return this;
@@ -368,6 +372,10 @@ public class Arguments<T>
 
             // Reset wasSet in case Parse is called again
             option.wasSet = false;
+        }
+
+        if (!explicitAction && usingDefaultAction != null) {
+            usingDefaultAction.Invoke(target);
         }
 
         // Action callback
@@ -846,6 +854,7 @@ public class Arguments<T>
     OptionDef definedOption;
     Dictionary<string, ActionDef> actions = new Dictionary<string, ActionDef>(StringComparer.OrdinalIgnoreCase);
     string defaultAction;
+    Action<T> usingDefaultAction;
     List<OptionDef> options = new List<OptionDef>();
 
     string parsedAction;

@@ -22,6 +22,11 @@ public class InstallUnityCLI
     /// </summary>
     public string action;
 
+    /// <summary>
+    /// Wether the action was selected explicitly or the default is used.
+    /// </summary>
+    public bool usingDefaultAction;
+
     // -------- Options --------
 
     /// <summary>
@@ -167,7 +172,7 @@ public class InstallUnityCLI
     /// </summary>
     public override string ToString()
     {
-        var cmd = action ?? "";
+        var cmd = (action != null && !usingDefaultAction) ? action : "";
         if (help) cmd += " --help";
         if (verbose > 0) cmd += string.Concat(Enumerable.Repeat(" --verbose", verbose));
         if (clearCache) cmd += " --clear-cache";
@@ -254,7 +259,7 @@ public class InstallUnityCLI
                     .Description("Architecture to show the details for (default = current architecture)")
 
                 .Action("install", (t, a) => t.action = a)
-                    .DefaultAction()
+                    .DefaultAction(t => t.usingDefaultAction = true)
                     .Description("Download and install a version of Unity")
                 
                 .Option((InstallUnityCLI t, string v) => t.matchVersion = v, 0)
