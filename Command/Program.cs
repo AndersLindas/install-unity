@@ -406,10 +406,19 @@ public class InstallUnityCLI
     /// <summary>
     /// Return the version of this program.
     /// </summary>
-    public string GetVersion()
+    public string GetVersion(bool includeGitCommit)
     {
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-        return System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(assembly).InformationalVersion;
+        var version = System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(assembly).InformationalVersion;
+        
+        if (!includeGitCommit) {
+            var plusIndex = version.IndexOf('+');
+            if (plusIndex > 0) {
+                version = version.Substring(0, plusIndex);
+            }
+        }
+
+        return version;
     }
 
     /// <summary>
@@ -417,7 +426,7 @@ public class InstallUnityCLI
     /// </summary>
     public void PrintVersion()
     {
-        Console.WriteLine($"{PROGRAM_NAME} v{GetVersion()}");
+        Console.WriteLine($"{PROGRAM_NAME} v{GetVersion(verbose > 0)}");
     }
 
     // -------- Global --------
@@ -479,7 +488,7 @@ public class InstallUnityCLI
             .AddNiceConsole(level, false);
         Logger = factory.CreateLogger<InstallUnityCLI>();
 
-        Logger.LogInformation($"{PROGRAM_NAME} v{GetVersion()}");
+        Logger.LogInformation($"{PROGRAM_NAME} v{GetVersion(true)}");
         if (level != LogLevel.Warning) Logger.LogInformation($"Log level set to {level}");
 
         // Create installer instance
@@ -712,7 +721,7 @@ public class InstallUnityCLI
 
     public async Task ListUpdates()
     {
-        Console.WriteLine($"{PROGRAM_NAME} v{GetVersion()}, use --help to show usage");
+        Console.WriteLine($"{PROGRAM_NAME} v{GetVersion(false)}, use --help to show usage");
 
         // Force scanning for prerelease versions
         versionArgument = new UnityVersion(type: UnityVersion.Type.Alpha);
