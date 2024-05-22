@@ -349,7 +349,7 @@ public class UnityInstaller
     {
         var editor = metadata.GetEditorDownload(platform, architecture);
         if (editor == null) throw new ArgumentException($"No Unity version in cache for {platform}-{architecture}: {metadata.Version}");
-        return editor.modules.Where(p => p.preSelected).Select(p => p.id);
+        return editor.modules.Where(p => p.preSelected).Select(p => p.id).Prepend(EditorDownload.ModuleId);
     }
 
     /// <summary>

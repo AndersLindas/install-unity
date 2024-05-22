@@ -945,7 +945,7 @@ public class InstallUnityCLI
             .Where(p => !p.hidden)
             .Select(p => p.id + (p.preSelected ? "*" : ""))
             .OrderBy(p => p)
-            .Prepend("unity");
+            .Prepend("unity*");
         if (list.Any()) {
             Console.WriteLine(list.Count() + " Packages: " + string.Join(", ", list));
             Console.WriteLine();
@@ -1006,7 +1006,7 @@ public class InstallUnityCLI
         SetColors(ConsoleColor.DarkGray, ConsoleColor.DarkGray);
         Console.Write("--------------- ");
         SetForeground(ConsoleColor.White);
-        Console.Write($"Unity Editor [{module.Id}]" + " *");
+        Console.Write($"Unity Editor [{module.Id}] *");
         ResetColor();
         Console.WriteLine();
 
