@@ -1,6 +1,16 @@
 # Changelog
 
-### 2.12.0 (2023-05-??)
+### 2.12.1 (2024-05-22)
+* Convert new single-digit Unity versions (6+) to the internal four-digit one (6000+)
+* More strict version parsing, preventing arguments being misinterpreted as versions
+* Reduce cases where help isn't printed when requested because argument parsing failed
+* Version now includes Git commit hash when using `-v`
+* Fix "unity" editor package not selected by default
+* Fix some early errors not being colored, because `$CLICOLORS` was checked later
+* Fix "New major Unity versions" being shown in the overview when already installed
+* Update to .Net 8, use AOT compilation
+
+### 2.12.0 (2023-05-13)
 * Use Unity's official Release API to get release and package information
   * Releases should appear quicker when Unity is slow to update their archive webpage
   * Can directly request information of a specific Unity version from the API
