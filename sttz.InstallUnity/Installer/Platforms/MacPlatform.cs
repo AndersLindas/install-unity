@@ -73,15 +73,10 @@ public class MacPlatform : IInstallerPlatform
         }
     }
 
-    string GetUserLibraryDirectory()
-    {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
-        return Path.Combine(home, "Library");
-    }
-
     string GetUserApplicationSupportDirectory()
     {
-        return Path.Combine(Path.Combine(GetUserLibraryDirectory(), "Application Support"), UnityInstaller.PRODUCT_NAME);
+        var applicationSupport = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return Path.Combine(applicationSupport, UnityInstaller.PRODUCT_NAME);
     }
 
     public string GetConfigurationDirectory()
