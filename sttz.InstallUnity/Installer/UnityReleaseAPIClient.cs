@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -117,7 +118,7 @@ public class UnityReleaseAPIClient
         /// <summary>
         /// The release results.
         /// </summary>
-        public Release[] results;
+        public List<Release> results;
 
         // -------- Error fields --------
 
@@ -184,7 +185,7 @@ public class UnityReleaseAPIClient
         /// <summary>
         /// The Third Party Notices of the Unity Release.
         /// </summary>
-        public ThirdPartyNotice[] thirdPartyNotices;
+        public List<ThirdPartyNotice> thirdPartyNotices;
 
         [OnDeserialized]
         internal void OnDeserializedMethod(StreamingContext context)
@@ -429,7 +430,7 @@ public class UnityReleaseAPIClient
         /// <summary>
         /// EULAs the user should accept before installing.
         /// </summary>
-        public Eula[] eula;
+        public List<Eula> eula;
         /// <summary>
         /// Sub-Modules of this module.
         /// </summary>
@@ -653,30 +654,25 @@ public class UnityReleaseAPIClient
     /// <param name="maxResults">Limit returned results to not make too many requests</param>
     /// <param name="cancellation">Cancellation token</param>
     /// <returns>The results returned from the API</returns>
-    public async Task<Release[]> LoadAll(RequestParams request, int maxResults = 200, CancellationToken cancellation = default)
+    public async Task<IEnumerable<Release>> LoadAll(RequestParams request, int maxResults = 200, CancellationToken cancellation = default)
     {
         request.limit = 25;
 
         int maxTotal = 0, currentOffset = 0;
-        Release[] releases = null;
-        Response response = null;
+        var releases = new List<Release>();
+        Response response;
         do {
             response = await Send(request, cancellation);
             if (!response.IsSuccess) {
                 throw new Exception($"Unity Release API request failed: {response.title} - {response.detail}");
             }
 
-            maxTotal = Math.Min(response.total, maxResults);
-            if (releases == null) {
-                releases = new Release[maxTotal];
-            }
+            releases.AddRange(response.results);
+            currentOffset += response.results.Count;
 
-            Array.Copy(response.results, 0, releases, currentOffset, response.results.Length);
-            currentOffset += response.results.Length;
+            request.offset += response.results.Count;
 
-            request.offset += response.results.Length;
-
-        } while (currentOffset < maxTotal && response.results.Length > 0);
+        } while (currentOffset < maxTotal && response.results.Count > 0);
 
         return releases;
     }
@@ -701,12 +697,12 @@ public class UnityReleaseAPIClient
             response = await Send(request, cancellation);
             if (!response.IsSuccess) {
                 throw new Exception($"Unity Release API request failed: {response.title} - {response.detail}");
-            } else if (response.results.Length == 0) {
+            } else if (response.results.Count == 0) {
                 break;
             }
 
             releases.AddRange(response.results);
-            request.offset += response.results.Length;
+            request.offset += response.results.Count;
 
             var oldestReleaseDate = response.results[^1].releaseDate;
             var releasedSince = now - oldestReleaseDate;
@@ -758,7 +754,7 @@ public class UnityReleaseAPIClient
         var result = await Send(req, cancellation);
         if (!result.IsSuccess) {
             throw new Exception($"Unity Release API request failed: {result.title} - {result.detail}");
-        } else if (result.results.Length == 0) {
+        } else if (result.results.Count == 0) {
             return null;
         }
 

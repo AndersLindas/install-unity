@@ -981,7 +981,7 @@ public class InstallUnityCLI
             WriteField("Hidden", (module.hidden ? "yes" : null));
             WriteField("Size", $"{Helpers.FormatSize(module.downloadSize.GetBytes())} ({Helpers.FormatSize(module.installedSize.GetBytes())} installed)");
 
-            if (module.eula?.Length > 0) {
+            if (module.eula?.Count > 0) {
                 WriteField("EULA", module.eula[0].message);
                 foreach (var eula in module.eula) {
                     WriteField("", eula.label + ": " + eula.url);
@@ -1189,7 +1189,7 @@ public class InstallUnityCLI
         // Make user accept additional EULAs
         var hasEula = false;
         foreach (var module in resolved.OfType<Module>()) {
-            if (module.eula == null || module.eula.Length == 0) continue;
+            if (module.eula == null || module.eula.Count == 0) continue;
             hasEula = true;
             Console.WriteLine();
             SetForeground(ConsoleColor.Yellow);

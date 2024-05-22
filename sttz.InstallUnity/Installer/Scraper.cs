@@ -461,20 +461,20 @@ public class Scraper
             var eulaUrl2 = section.Keys["eulaurl2"];
 
             var eulaCount = (eulaUrl2 != null ? 2 : 1);
-            download.eula = new Eula[eulaCount];
+            download.eula = new(eulaCount);
 
-            download.eula[0] = new Eula() {
+            download.eula.Add(new Eula() {
                 message = eulaMessage,
                 label = section.Keys["eulalabel1"],
                 url = eulaUrl1
-            };
+            });
 
             if (eulaCount > 1) {
-                download.eula[1] = new Eula() {
+                download.eula.Add(new Eula() {
                     message = eulaMessage,
                     label = section.Keys["eulalabel2"],
                     url = eulaUrl2
-                };
+                });
             }
         }
 

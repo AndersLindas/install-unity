@@ -88,7 +88,7 @@ public static class VirtualPackages
                 downloadSize = FileSize.FromMegaBytes(148),
                 installedSize = FileSize.FromMegaBytes(174),
                 parentModuleId = "Android",
-                eula = new Eula[] {
+                eula = new() {
                     new Eula() {
                         url = "https://dl.google.com/dl/android/repository/repository2-1.xml",
                         label = "Android SDK and NDK License Terms from Google",

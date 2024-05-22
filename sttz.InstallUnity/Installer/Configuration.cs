@@ -12,6 +12,7 @@ namespace sttz.InstallUnity
 /// <summary>
 /// Configuration of the Unity installer.
 /// </summary>
+[JsonObject(MemberSerialization.Fields)]
 public class Configuration
 {
     [Description("After how many seconds the cache is considered to be outdated.")]
