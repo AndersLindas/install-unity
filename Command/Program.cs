@@ -764,7 +764,7 @@ public class InstallUnityCLI
             // Find major/minor new Unity versions not yet installed
             var latest = installs.OrderByDescending(i => i.version).First();
             var newer = mms
-                .Where(m => (m.release.stream & ReleaseStream.PrereleaseMask) == 0 && m.Version > latest.version);
+                .Where(m => (m.release.stream & ReleaseStream.PrereleaseMask) == 0 && m.Version.major > latest.version.major);
 
             if (newer.Any()) {
                 WriteTitle("New major Unity versions:");
